@@ -80,6 +80,7 @@ jobs:
             binary_suffix: ""
     
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     
     steps:
       - uses: actions/checkout@v4
@@ -109,25 +110,57 @@ jobs:
           
       - name: Build binary with PyInstaller
         shell: bash
+        timeout-minutes: 30
         run: |
           # Create the binary using PyInstaller
-          pyinstaller \
-            --onefile \
-            --name "hcp-config-validator${{ matrix.binary_suffix }}" \
-            --add-data "validator/rules:validator/rules" \
-            --hidden-import "validator.rules_engine" \
-            --hidden-import "validator.reporters" \
-            --hidden-import "validator.main" \
-            --console \
-            --clean \
-            standalone_main.py
+          # Use platform-specific optimizations
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            # Windows-specific optimizations
+            pyinstaller \
+              --onefile \
+              --name "hcp-config-validator${{ matrix.binary_suffix }}" \
+              --add-data "validator/rules;validator/rules" \
+              --hidden-import "validator.rules_engine" \
+              --hidden-import "validator.reporters" \
+              --hidden-import "validator.main" \
+              --console \
+              --clean \
+              --noconfirm \
+              --optimize 2 \
+              --noupx \
+              standalone_main.py
+          else
+            # Unix-based systems (Linux, macOS)
+            pyinstaller \
+              --onefile \
+              --name "hcp-config-validator${{ matrix.binary_suffix }}" \
+              --add-data "validator/rules:validator/rules" \
+              --hidden-import "validator.rules_engine" \
+              --hidden-import "validator.reporters" \
+              --hidden-import "validator.main" \
+              --console \
+              --clean \
+              --noconfirm \
+              --optimize 2 \
+              standalone_main.py
+          fi
             
       - name: Test binary
         shell: bash
+        timeout-minutes: 5
         run: |
           # Test the built binary
           echo '{"storage": {"file": {"path": "/vault/data"}}}' > test_vault.json
-          ./dist/hcp-config-validator${{ matrix.binary_suffix }} vault --file test_vault.json --output json | head -10
+          # Run binary and check it works (capture output to file to avoid broken pipe)
+          ./dist/hcp-config-validator${{ matrix.binary_suffix }} vault --file test_vault.json --output json > binary_test_output.json 2>&1
+          # Verify the binary produced output
+          if [ -s binary_test_output.json ]; then
+            echo "✅ Binary test successful - produced output"
+            head -5 binary_test_output.json
+          else
+            echo "❌ Binary test failed - no output produced"
+            exit 1
+          fi
           
       - name: Set binary name
         shell: bash
