@@ -10,6 +10,7 @@ __pycache__/
 .Python
 *.egg-info/
 .pytest_cache/
+.coverage
 
 # Build artifacts
 build/
