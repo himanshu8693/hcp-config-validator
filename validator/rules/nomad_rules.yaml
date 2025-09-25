@@ -1,0 +1,387 @@
+- id: NMD-001
+  title: "Client memory vs job resource requests"
+  product: nomad
+  severity: warning
+  jmespath: "client.memory"
+  operator: lt
+  expected: 2048
+  message: "Nomad client memory is less than 2GB."
+  remediation: "Ensure client resources exceed aggregate job requests."
+
+- id: NMD-002
+  title: "node_class configured"
+  product: nomad
+  severity: info
+  jmespath: "node_class"
+  operator: absent
+  message: "node_class not configured."
+  remediation: "Set node_class for proper job placement."
+
+- id: NMD-003
+  title: "Server replication and leader config"
+  product: nomad
+  severity: critical
+  jmespath: "server.enabled"
+  operator: equals
+  expected: false
+  message: "Nomad server not enabled."
+  remediation: "Run at least 3 servers for HA."
+
+- id: NMD-004
+  title: "ACLs enabled for Nomad"
+  product: nomad
+  severity: critical
+  jmespath: "acl.enabled"
+  operator: equals
+  expected: false
+  message: "ACLs are not enabled."
+  remediation: "Enable ACL and role-based access."
+
+- id: NMD-005
+  title: "CSI/CNI plugin configuration present"
+  product: nomad
+  severity: warning
+  jmespath: "plugin"
+  operator: absent
+  message: "CSI/CNI plugin configuration missing."
+  remediation: "Ensure plugin configuration and sockets present."
+
+- id: NMD-006
+  title: "Jobs with host networking flagged"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].network.mode"
+  operator: equals
+  expected: "host"
+  message: "Job uses host networking."
+  remediation: "Avoid host networking unless necessary."
+
+- id: NMD-007
+  title: "Jobs with privileged mode flagged"
+  product: nomad
+  severity: critical
+  jmespath: "job[*].config.privileged"
+  operator: equals
+  expected: true
+  message: "Job runs in privileged mode."
+  remediation: "Avoid privileged containers unless required."
+
+- id: NMD-008
+  title: "Policy file checks for overly broad policies"
+  product: nomad
+  severity: warning
+  jmespath: "policy[*].rules"
+  operator: regex
+  expected: "capabilities = \\[\\\".*\\\"\\]"
+  message: "Policy may be overly permissive."
+  remediation: "Review policies for least privilege."
+
+- id: NMD-009
+  title: "Data dir not on ephemeral storage"
+  product: nomad
+  severity: warning
+  jmespath: "data_dir"
+  operator: regex
+  expected: "/tmp|/var/tmp"
+  message: "data_dir is on ephemeral storage."
+  remediation: "Set data_dir to persistent storage."
+
+- id: NMD-010
+  title: "Region and datacenter set"
+  product: nomad
+  severity: info
+  jmespath: "region"
+  operator: absent
+  message: "region not set."
+  remediation: "Set region for multi-region deployments."
+
+- id: NMD-011
+  title: "Consul integration enabled"
+  product: nomad
+  severity: info
+  jmespath: "consul"
+  operator: absent
+  message: "Consul integration not enabled."
+  remediation: "Enable Consul integration for service discovery."
+
+- id: NMD-012
+  title: "TLS enabled for HTTP/RPC"
+  product: nomad
+  severity: critical
+  jmespath: "tls"
+  operator: absent
+  message: "TLS not enabled for Nomad endpoints."
+  remediation: "Enable TLS for HTTP/RPC endpoints."
+
+- id: NMD-013
+  title: "No secrets embedded in config files"
+  product: nomad
+  severity: critical
+  jmespath: "*"
+  operator: regex
+  expected: "(token|password|secret|key)[\\s:=]+[A-Za-z0-9+/=]{8,}"
+  message: "Potential secret found in config file."
+  remediation: "Remove secrets from config; use environment variables or secret manager."
+
+- id: NMD-014
+  title: "Contact/owner metadata present"
+  product: nomad
+  severity: info
+  jmespath: "owner"
+  operator: absent
+  message: "No owner/contact metadata found."
+  remediation: "Add owner/contact info for incident response."
+
+- id: NMD-015
+  title: "Telemetry enabled"
+  product: nomad
+  severity: info
+  jmespath: "telemetry"
+  operator: absent
+  message: "Telemetry not enabled."
+  remediation: "Enable telemetry stanza for metrics."
+
+- id: NMD-016
+  title: "Log rotation configured"
+  product: nomad
+  severity: info
+  jmespath: "log_rotate_bytes"
+  operator: absent
+  message: "Log rotation not configured."
+  remediation: "Configure log rotation for local logs."
+
+- id: NMD-017
+  title: "Server join addresses set"
+  product: nomad
+  severity: warning
+  jmespath: "server.join"
+  operator: absent
+  message: "No server join addresses set."
+  remediation: "Set server join addresses for HA."
+
+- id: NMD-018
+  title: "Vault integration enabled"
+  product: nomad
+  severity: info
+  jmespath: "vault"
+  operator: absent
+  message: "Vault integration not enabled."
+  remediation: "Enable Vault integration for secrets management."
+
+- id: NMD-019
+  title: "No default policy with wildcard capabilities"
+  product: nomad
+  severity: warning
+  jmespath: "policy[*].rules"
+  operator: regex
+  expected: "capabilities = \\[\\\".*\\\"\\]"
+  message: "Default policy has wildcard capabilities."
+  remediation: "Restrict default policy capabilities."
+
+- id: NMD-020
+  title: "Job version pinned in IaC"
+  product: nomad
+  severity: info
+  jmespath: "job_version"
+  operator: absent
+  message: "Job version not pinned."
+  remediation: "Pin tested job version in IaC."
+
+- id: NMD-021
+  title: "CSI plugin health checks configured"
+  product: nomad
+  severity: warning
+  jmespath: "plugin.csi.health_check"
+  operator: absent
+  message: "CSI plugin health check not configured."
+  remediation: "Configure health checks for CSI plugins."
+
+- id: NMD-022
+  title: "CNI plugin version compatibility"
+  product: nomad
+  severity: info
+  jmespath: "plugin.cni.version"
+  operator: absent
+  message: "CNI plugin version not set."
+  remediation: "Pin CNI plugin version for compatibility."
+
+- id: NMD-023
+  title: "Job restart policy set"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].restart"
+  operator: absent
+  message: "Job restart policy not set."
+  remediation: "Set restart policy for jobs."
+
+- id: NMD-024
+  title: "Job constraint checks for placement"
+  product: nomad
+  severity: info
+  jmespath: "job[*].constraint"
+  operator: absent
+  message: "Job constraint not set."
+  remediation: "Set job constraints for placement control."
+
+- id: NMD-025
+  title: "Log shipping configured"
+  product: nomad
+  severity: info
+  jmespath: "log_shipper"
+  operator: absent
+  message: "Log shipping not configured."
+  remediation: "Configure log shipping to central store."
+
+- id: NMD-026
+  title: "Nomad version pinned in IaC"
+  product: nomad
+  severity: info
+  jmespath: "nomad_version"
+  operator: absent
+  message: "Nomad version not pinned."
+  remediation: "Pin tested Nomad version in IaC."
+
+- id: NMD-027
+  title: "Job update strategy set"
+  product: nomad
+  severity: info
+  jmespath: "job[*].update"
+  operator: absent
+  message: "Job update strategy not set."
+  remediation: "Set update strategy for jobs."
+
+- id: NMD-028
+  title: "Job ephemeral disk size set"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].ephemeral_disk.size"
+  operator: lt
+  expected: 1024
+  message: "Ephemeral disk size is less than 1GB."
+  remediation: "Set ephemeral disk size to at least 1GB."
+
+- id: NMD-029
+  title: "Job network port checks"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].network.port"
+  operator: absent
+  message: "Job network port not set."
+  remediation: "Set network port for jobs."
+
+- id: NMD-030
+  title: "Job artifact source uses HTTPS"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].artifact.source"
+  operator: regex
+  expected: "^http:"
+  message: "Job artifact source is not HTTPS."
+  remediation: "Use HTTPS for artifact sources."
+
+# Enhanced Security and Operational Rules
+- id: NMD-031
+  title: "Nomad workload identity properly scoped"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].identity.ttl"
+  operator: gt
+  expected: 86400
+  message: "Workload identity TTL exceeds 24 hours."
+  remediation: "Limit workload identity TTL for security."
+  reference: "https://www.nomadproject.io/docs/concepts/workload-identity"
+
+- id: NMD-032
+  title: "Container runtime security configured"
+  product: nomad
+  severity: critical
+  jmespath: "job[*].config.security_opt"
+  operator: in
+  expected: ["no-new-privileges:true"]
+  message: "Container security options not configured."
+  remediation: "Enable no-new-privileges and other security options."
+  reference: "https://docs.docker.com/engine/reference/run/#security-configuration"
+
+- id: NMD-033
+  title: "Nomad sentinel policies enforced"
+  product: nomad
+  severity: warning
+  jmespath: "sentinel"
+  operator: absent
+  message: "No Sentinel policies configured."
+  remediation: "Configure Sentinel policies for advanced governance."
+  reference: "https://www.nomadproject.io/docs/enterprise/sentinel"
+
+- id: NMD-034
+  title: "Resource isolation properly configured"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].resources.cpu"
+  operator: absent
+  message: "No CPU resource limits specified."
+  remediation: "Set CPU and memory resource limits for all jobs."
+  reference: "https://www.nomadproject.io/docs/job-specification/resources"
+
+- id: NMD-035
+  title: "Nomad audit logging enabled"
+  product: nomad
+  severity: warning
+  jmespath: "audit.enabled"
+  operator: equals
+  expected: false
+  message: "Audit logging not enabled."
+  remediation: "Enable audit logging for security compliance."
+  reference: "https://www.nomadproject.io/docs/configuration/audit"
+
+- id: NMD-036
+  title: "Job service mesh integration secured"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].service.connect.sidecar_service"
+  operator: absent
+  message: "Service mesh sidecar not configured."
+  remediation: "Configure Connect sidecar for service mesh security."
+  reference: "https://www.nomadproject.io/docs/integrations/consul-connect"
+
+- id: NMD-037
+  title: "Nomad client host volume access restricted"
+  product: nomad
+  severity: critical
+  jmespath: "client.host_volume[*].read_only"
+  operator: equals
+  expected: false
+  message: "Host volume mounted with write access."
+  remediation: "Mount host volumes as read-only when possible."
+  reference: "https://www.nomadproject.io/docs/configuration/client#host_volume-stanza"
+
+- id: NMD-038
+  title: "Job network isolation properly configured"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].network.mode"
+  operator: in
+  expected: ["bridge", "none"]
+  message: "Job using secure network mode."
+  remediation: "Use bridge or none network modes for isolation."
+  reference: "https://www.nomadproject.io/docs/job-specification/network"
+
+- id: NMD-039
+  title: "Nomad API rate limiting configured"
+  product: nomad
+  severity: warning
+  jmespath: "limits.https_handshake_timeout|limits.http_max_conns_per_client"
+  operator: absent
+  message: "No API rate limiting configured."
+  remediation: "Configure rate limits to prevent API abuse."
+  reference: "https://www.nomadproject.io/docs/configuration#limits-parameters"
+
+- id: NMD-040
+  title: "Job template security configured"
+  product: nomad
+  severity: warning
+  jmespath: "job[*].template[*].env"
+  operator: equals
+  expected: true
+  message: "Template environment variable exposure enabled."
+  remediation: "Review template env settings for secret exposure."
+  reference: "https://www.nomadproject.io/docs/job-specification/template"

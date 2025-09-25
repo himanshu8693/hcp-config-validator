@@ -1,0 +1,579 @@
+- id: VLT-001
+  title: "Do not use 'file' storage in production"
+  product: vault
+  severity: critical
+  jmespath: "keys(storage[0])[0]"
+  operator: not_equals
+  expected: "file"
+  message: "Vault storage type is 'file' which is not recommended for production."
+  remediation: "Use 'raft' or 'consul' as storage backend for HA and replication."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/storage"
+
+- id: "VLT-002"
+  title: "TLS Disabled"
+  description: "Listener has TLS disabled"
+  category: "Network Security"
+  severity: "HIGH"
+  service: "vault"
+  jmespath: "listener[*].tcp.tls_disable"
+  operator: "in"
+  expected: [false, 0]
+  message: "TLS is disabled for listener"
+  remediation: "Remove 'tls_disable' or set it to false/0 to enable TLS encryption"
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/listener"
+
+- id: VLT-003
+  title: "Audit logging configuration reminder"
+  product: vault
+  severity: info
+  jmespath: "audit_reminder"
+  operator: absent
+  message: "Reminder: Audit devices must be configured after Vault deployment via CLI/API."
+  remediation: "After Vault starts, enable audit devices: 'vault audit enable file file_path=/var/log/vault_audit.log'"
+  reference: "https://developer.hashicorp.com/vault/docs/audit"
+
+- id: VLT-004
+  title: "Secret leases - set reasonable TTL"
+  description: "Configure explicit lease TTL to control secret lifetime"
+  jmespath: "max_lease_ttl"
+  operator: exists
+  expected: true
+  severity: info
+  message: "Max lease TTL configured."
+  remediation: "Consider setting max_lease_ttl based on your use case: Development/Testing: 24h-168h (1-7 days), CI/CD Systems: 1h-24h, Service Accounts: 168h-720h (7-30 days), User Authentication: 8h-24h, High Security: 1h-72h (3 days), Production Services: 168h-480h (7-20 days). Default is 768h (32 days)."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration#max_lease_ttl"
+
+- id: VLT-005
+  title: "Performance Standby / HA check"
+  product: vault
+  severity: critical
+  jmespath: "(ha_storage && length(ha_storage) > `0`) || (storage && contains(['consul', 'raft', 'etcd', 'dynamodb', 'mysql', 'postgresql', 'cockroachdb', 'cassandra', 'gcs', 's3', 'azure'], keys(storage[0])[0]))"
+  operator: equals
+  expected: true
+  message: "HA capability check: Current storage backend supports HA coordination."
+  remediation: "For non-HA storage backends, configure ha_storage parameter for production Vault clusters."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/ha_storage"
+
+- id: VLT-006
+  title: "Unsealed root token present"
+  product: vault
+  severity: critical
+  jmespath: "root_token"
+  operator: exists
+  message: "Root token found in config/vars — do not store root tokens in config files."
+  remediation: "Remove tokens from repository; use secrets in CI or Vault agent."
+
+- id: VLT-007
+  title: "disable_mlock should be false in production"
+  product: vault
+  severity: warning
+  jmespath: "disable_mlock"
+  operator: equals
+  expected: true
+  message: "disable_mlock is true; this can reduce security on Linux."
+  remediation: "Set disable_mlock to false unless running in an environment where mlock is unsupported."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration#disable_mlock"
+
+- id: VLT-008
+  title: "api_addr should be set"
+  product: vault
+  severity: warning
+  jmespath: "api_addr"
+  operator: absent
+  message: "api_addr is not set."
+  remediation: "Set api_addr to the externally reachable address of Vault."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration#api_addr"
+
+- id: VLT-009
+  title: "Listener should not bind to 0.0.0.0 in production"
+  product: vault
+  severity: warning
+  jmespath: "listener[*].tcp.address"
+  operator: equals
+  expected: "0.0.0.0"
+  message: "Listener is bound to all interfaces (0.0.0.0)."
+  remediation: "Bind listener to a specific interface in production."
+
+- id: VLT-010
+  title: "cluster_addr should be set for HA"
+  product: vault
+  severity: warning
+  jmespath: "cluster_addr"
+  operator: absent
+  message: "cluster_addr is not set."
+  remediation: "Set cluster_addr for HA Vault clusters."
+
+- id: VLT-011
+  title: "Seal configuration: auto-unseal recommended"
+  product: vault
+  severity: info
+  jmespath: "seal"
+  operator: absent
+  message: "No seal stanza found; consider auto-unseal for automation."
+  remediation: "Configure auto-unseal with a supported KMS provider."
+
+- id: VLT-012
+  title: "Replication configured for DR/HA"
+  product: vault
+  severity: warning
+  jmespath: "replication"
+  operator: absent
+  message: "Replication not configured."
+  remediation: "Configure performance/DR replication for production."
+
+- id: VLT-013
+  title: "Token TTL policies enforced"
+  product: vault
+  severity: info
+  jmespath: "token_ttl"
+  operator: absent
+  message: "No token_ttl set; consider enforcing TTL policies."
+  remediation: "Set token_ttl and max_ttl for tokens."
+
+- id: VLT-014
+  title: "KMS/Auto-unseal keys not stored in repo"
+  product: vault
+  severity: critical
+  jmespath: "seal[0].pgp_keys"
+  operator: exists
+  message: "PGP keys for unseal found in config."
+  remediation: "Do not store unseal keys in config; use secret manager."
+
+- id: VLT-015
+  title: "Vault version pinned in IaC"
+  product: vault
+  severity: info
+  jmespath: "vault_version"
+  operator: absent
+  message: "Vault version not pinned."
+  remediation: "Pin tested Vault version in IaC."
+
+- id: VLT-016
+  title: "Heartbeat / telemetry enabled"
+  product: vault
+  severity: info
+  jmespath: "telemetry"
+  operator: absent
+  message: "Telemetry not enabled."
+  remediation: "Enable telemetry stanza for metrics."
+
+- id: VLT-017
+  title: "API rate limiting flags surfaced"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.rate_limit"
+  operator: absent
+  message: "No rate limiting configured."
+  remediation: "Configure rate limiting for API endpoints."
+
+- id: VLT-018
+  title: "Backup/snapshot cadence configured"
+  product: vault
+  severity: warning
+  jmespath: "snapshot"
+  operator: absent
+  message: "No snapshot/backup configuration found."
+  remediation: "Ensure regular snapshot/backup for raft or storage backend."
+
+- id: VLT-019
+  title: "License file present for Enterprise features"
+  product: vault
+  severity: info
+  jmespath: "license_path"
+  operator: absent
+  message: "No license file found; required for Enterprise features."
+  remediation: "Add license_path for Vault Enterprise."
+
+- id: VLT-020
+  title: "Healthcheck endpoints protected"
+  product: vault
+  severity: warning
+  jmespath: "listener[*].tcp.health_check"
+  operator: absent
+  message: "Healthcheck endpoint not protected."
+  remediation: "Protect /sys/health endpoint with firewall or auth."
+
+- id: VLT-021
+  title: "No secrets embedded in config files"
+  product: vault
+  severity: critical
+  jmespath: "*"
+  operator: regex
+  expected: "(token|password|secret|key)[\\s:=]+[A-Za-z0-9+/=]{8,}"
+  message: "Potential secret found in config file."
+  remediation: "Remove secrets from config; use environment variables or secret manager."
+
+- id: VLT-022
+  title: "Contact/owner metadata present"
+  product: vault
+  severity: info
+  jmespath: "owner"
+  operator: absent
+  message: "No owner/contact metadata found."
+  remediation: "Add owner/contact info for incident response."
+
+- id: VLT-023
+  title: "Listener TLS min version set to >= tls12"
+  product: vault
+  severity: warning
+  jmespath: "listener[*].tcp.tls_min_version"
+  operator: lt
+  expected: "tls12"
+  message: "TLS min version is less than tls12."
+  remediation: "Set tls_min_version to at least tls12."
+
+- id: VLT-024
+  title: "Listener cert/key files set"
+  product: vault
+  severity: critical
+  jmespath: "listener[*].tcp.tls_cert_file"
+  operator: absent
+  message: "TLS cert file not set."
+  remediation: "Set tls_cert_file and tls_key_file for listener."
+
+- id: VLT-025
+  title: "Listener client certs required"
+  product: vault
+  severity: warning
+  jmespath: "listener[*].tcp.tls_require_and_verify_client_cert"
+  operator: equals
+  expected: false
+  message: "Client cert verification not required."
+  remediation: "Set tls_require_and_verify_client_cert to true for mTLS."
+
+- id: VLT-026
+  title: "Default lease TTL set"
+  product: vault
+  severity: info
+  jmespath: "default_lease_ttl"
+  operator: absent
+  message: "No default_lease_ttl set."
+  remediation: "Set default_lease_ttl for secret engines."
+
+- id: VLT-027
+  title: "Max lease TTL set"
+  product: vault
+  severity: info
+  jmespath: "max_lease_ttl"
+  operator: absent
+  message: "No max_lease_ttl set."
+  remediation: "Set max_lease_ttl for secret engines."
+
+- id: VLT-028
+  title: "Policies are not overly permissive"
+  product: vault
+  severity: warning
+  jmespath: "policies[*].policy"
+  operator: regex
+  expected: 'path \".*\" { capabilities = \[\".*\"\] }'
+  message: "Policy may be overly permissive."
+  remediation: "Review policies for least privilege."
+
+- id: VLT-029
+  title: "Replication performance/DR enabled"
+  product: vault
+  severity: info
+  jmespath: "replication"
+  operator: absent
+  message: "No replication stanza found."
+  remediation: "Enable performance/DR replication for HA."
+
+- id: VLT-030
+  title: "No root tokens in config files"
+  product: vault
+  severity: critical
+  jmespath: "root_token"
+  operator: exists
+  message: "Root token found in config file."
+  remediation: "Remove root tokens from config and rotate."
+
+- id: VLT-031
+  title: "Listener x_forwarded_for_header enabled"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.x_forwarded_for_authorized_addrs"
+  operator: absent
+  message: "x_forwarded_for_authorized_addrs not set."
+  remediation: "Set x_forwarded_for_authorized_addrs if using proxies."
+
+- id: VLT-032
+  title: "Audit device file permissions reminder"
+  product: vault
+  severity: info
+  jmespath: "audit_file_permissions_reminder"
+  operator: absent
+  message: "Reminder: Configure audit device file permissions after enabling audit devices."
+  remediation: "When enabling file audit: 'vault audit enable file file_path=/var/log/vault.log mode=0600'"
+
+- id: VLT-033
+  title: "Listener http_idle_timeout set"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.http_idle_timeout"
+  operator: absent
+  message: "http_idle_timeout not set."
+  remediation: "Set http_idle_timeout for listeners."
+
+- id: VLT-034
+  title: "Listener http_read_timeout set"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.http_read_timeout"
+  operator: absent
+  message: "http_read_timeout not set."
+  remediation: "Set http_read_timeout for listeners."
+
+- id: VLT-035
+  title: "Listener http_write_timeout set"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.http_write_timeout"
+  operator: absent
+  message: "http_write_timeout not set."
+  remediation: "Set http_write_timeout for listeners."
+
+- id: VLT-036
+  title: "Listener tcp_keepalive set"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.tcp_keepalive"
+  operator: absent
+  message: "tcp_keepalive not set."
+  remediation: "Set tcp_keepalive for listeners."
+
+- id: VLT-037
+  title: "Listener tls_cipher_suites set"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.tls_cipher_suites"
+  operator: absent
+  message: "tls_cipher_suites not set."
+  remediation: "Set tls_cipher_suites for listeners."
+
+- id: VLT-038
+  title: "Listener tls_prefer_server_cipher_suites set"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.tls_prefer_server_cipher_suites"
+  operator: absent
+  message: "tls_prefer_server_cipher_suites not set."
+  remediation: "Set tls_prefer_server_cipher_suites for listeners."
+
+- id: "VLT-039"
+  title: "TLS Disabled on TCP Listener"
+  description: "TCP listener has TLS disabled"
+  category: "Network Security"
+  severity: "HIGH"
+  service: "vault"
+  jmespath: "listener[*].tcp.tls_disable"
+  operator: "in"
+  expected: [false, 0]
+  message: "TLS is disabled for TCP listener"
+  remediation: "Set tls_disable = false or remove the option to enable TLS"
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/listener/tcp"
+
+- id: VLT-040
+  title: "No default policy with wildcard capabilities"
+  product: vault
+  severity: warning
+  jmespath: "policies[*].policy"
+  operator: regex
+  expected: 'capabilities = \[\".*\"\]'
+  message: "Default policy has wildcard capabilities."
+  remediation: "Restrict default policy capabilities."
+
+- id: VLT-041
+  title: "Audit device log rotation reminder"
+  product: vault
+  severity: info
+  jmespath: "audit_rotation_reminder"
+  operator: absent
+  message: "Reminder: Configure log rotation for audit device files via external log management."
+  remediation: "Use logrotate or similar tool to manage audit log rotation; Vault audit devices don't have built-in rotation."
+
+- id: VLT-042
+  title: "Audit device central store reminder"
+  product: vault
+  severity: info
+  jmespath: "audit_central_store_reminder"
+  operator: absent
+  message: "Reminder: Configure audit devices to ship logs to central store after deployment."
+  remediation: "Enable syslog audit device: 'vault audit enable syslog' or use file audit with log forwarding."
+
+- id: VLT-043
+  title: "Advanced seal type (HSM or cloud KMS) recommended"
+  product: vault
+  severity: info
+  jmespath: "seal[0].type"
+  operator: not_equals
+  expected: "awskms"
+  message: "Not using advanced seal type (HSM/cloud KMS)."
+  remediation: "Consider using HSM or cloud KMS for auto-unseal."
+
+- id: VLT-044
+  title: "Policy path restrictions enforced"
+  product: vault
+  severity: warning
+  jmespath: "policies[*].policy"
+  operator: regex
+  expected: 'path \"/.*\" { capabilities = \[\".*\"\] }'
+  message: "Policy allows broad path access."
+  remediation: "Restrict policy paths to least privilege."
+
+- id: VLT-045
+  title: "Telemetry endpoint protected"
+  product: vault
+  severity: warning
+  jmespath: "telemetry"
+  operator: exists
+  message: "Telemetry endpoint may be exposed."
+  remediation: "Protect telemetry endpoint with firewall or auth."
+
+- id: VLT-046
+  title: "Vault version compatibility with storage backend"
+  product: vault
+  severity: info
+  jmespath: "storage.type"
+  operator: in
+  expected: ["raft", "consul"]
+  message: "Check Vault version compatibility with storage backend."
+  remediation: "Ensure Vault version is compatible with storage backend."
+
+- id: VLT-047
+  title: "Listener stanza count matches expected"
+  product: vault
+  severity: info
+  jmespath: "listener"
+  operator: exists
+  message: "Multiple listener stanzas detected."
+  remediation: "Review listener stanzas for correct configuration."
+
+- id: VLT-048
+  title: "Storage stanza redundancy for HA"
+  product: vault
+  severity: warning
+  jmespath: "storage"
+  operator: exists
+  message: "Single storage stanza detected."
+  remediation: "Consider storage backend redundancy for HA."
+
+- id: VLT-049
+  title: "Listener tls_disable not set to 1 in dev"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.tls_disable"
+  operator: in
+  expected: [false, 0]
+  message: "TLS enabled in dev mode."
+  remediation: "TLS can be disabled in dev mode for testing only."
+
+- id: VLT-050
+  title: "Listener tls_disable not set to 1 in prod"
+  product: vault
+  severity: critical
+  jmespath: "listener[*].tcp.tls_disable"
+  operator: in
+  expected: [false, 0]
+  message: "TLS is disabled on listener in production."
+  remediation: "Enable TLS for all listeners in production."
+
+# Enhanced Security and Operational Rules
+- id: VLT-051
+  title: "Vault Enterprise license configured"
+  product: vault
+  severity: info
+  jmespath: "license_path"
+  operator: absent
+  message: "No license path configured for enterprise features."
+  remediation: "Configure license path for enterprise features if using."
+  reference: "https://developer.hashicorp.com/vault/docs/enterprise"
+
+- id: VLT-052
+  title: "Vault performance replication configured"
+  product: vault
+  severity: info
+  jmespath: "replication.performance"
+  operator: absent
+  message: "Performance replication not configured."
+  remediation: "Configure performance replication for high availability."
+  reference: "https://developer.hashicorp.com/vault/docs/enterprise/replication"
+
+- id: VLT-053
+  title: "Vault disaster recovery replication configured"
+  product: vault
+  severity: warning
+  jmespath: "replication.dr"
+  operator: absent
+  message: "Disaster recovery replication not configured."
+  remediation: "Configure DR replication for disaster recovery."
+  reference: "https://developer.hashicorp.com/vault/docs/enterprise/replication"
+
+- id: VLT-054
+  title: "Vault namespaces properly secured"
+  product: vault
+  severity: warning
+  jmespath: "namespace"
+  operator: exists
+  message: "Namespaces in use; verify access controls."
+  remediation: "Ensure namespace access is properly controlled with policies."
+  reference: "https://developer.hashicorp.com/vault/docs/enterprise/namespaces"
+
+- id: VLT-055
+  title: "Vault auto-unseal properly configured"
+  product: vault
+  severity: critical
+  jmespath: "seal"
+  operator: exists
+  message: "Auto-unseal configured; verify security."
+  remediation: "Ensure auto-unseal keys are properly secured and rotated."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/seal"
+
+- id: VLT-056
+  title: "Vault entropy augmentation configured"
+  product: vault
+  severity: info
+  jmespath: "entropy"
+  operator: absent
+  message: "Entropy augmentation not configured."
+  remediation: "Configure entropy augmentation for enhanced cryptographic security."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/entropy-augmentation"
+
+- id: VLT-057
+  title: "Vault API rate limiting configured"
+  product: vault
+  severity: warning
+  jmespath: "api_addr_rps|listener[*].tcp.rate_limit"
+  operator: absent
+  message: "No API rate limiting configured."
+  remediation: "Configure rate limiting to prevent API abuse."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/listener/tcp#rate_limit"
+
+- id: VLT-058
+  title: "Vault plugin directory secured"
+  product: vault
+  severity: warning
+  jmespath: "plugin_directory"
+  operator: exists
+  message: "Plugin directory configured; verify security."
+  remediation: "Ensure plugin directory has restricted permissions (700)."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration#plugin_directory"
+
+- id: VLT-059
+  title: "Vault request headers properly configured"
+  product: vault
+  severity: info
+  jmespath: "listener[*].tcp.custom_response_headers"
+  operator: absent
+  message: "Custom response headers not configured."
+  remediation: "Configure security headers like X-Frame-Options, CSP."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/listener/tcp#custom_response_headers"
+
+- id: VLT-060
+  title: "Vault transform secrets engine secured"
+  product: vault
+  severity: warning
+  jmespath: "transform"
+  operator: exists
+  message: "Transform secrets engine in use; verify access controls."
+  remediation: "Ensure transform engine access is properly controlled."
+  reference: "https://developer.hashicorp.com/vault/docs/secrets/transform"

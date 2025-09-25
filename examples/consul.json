@@ -1,0 +1,14 @@
+{
+  "datacenter": "dc1",
+  "server": true,
+  "bootstrap_expect": 3,
+  "log_level": "INFO",
+  "encrypt": "base64-encoded-gossip-key",
+  "acl": {
+    "enabled": true,
+    "default_policy": "deny"
+  },
+  "connect": {
+    "enabled": true
+  }
+}

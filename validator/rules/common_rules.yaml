@@ -1,0 +1,327 @@
+# common_rules.yaml (cross-product best practices)
+- id: COM-001
+  title: "No secrets embedded in config files"
+  product: all
+  severity: critical
+  jmespath: "*"
+  operator: regex
+  expected: "(token|password|secret|key)[\\s:=]+[A-Za-z0-9+/=]{8,}"
+  message: "Potential secret found in config file."
+  remediation: "Remove secrets from config; use environment variables or secret manager."
+
+- id: COM-002
+  title: "Contact/owner metadata present"
+  product: all
+  severity: info
+  jmespath: "owner"
+  operator: absent
+  message: "No owner/contact metadata found."
+  remediation: "Add owner/contact info for incident response."
+
+- id: COM-003
+  title: "Telemetry enabled"
+  product: all
+  severity: info
+  jmespath: "telemetry"
+  operator: absent
+  message: "Telemetry not enabled."
+  remediation: "Enable telemetry stanza for metrics."
+
+- id: COM-004
+  title: "Log rotation configured"
+  product: all
+  severity: info
+  jmespath: "log_rotate_bytes"
+  operator: absent
+  message: "Log rotation not configured."
+  remediation: "Configure log rotation for local logs."
+
+- id: COM-005
+  title: "Version pinned in IaC"
+  product: all
+  severity: info
+  jmespath: "*_version"
+  operator: absent
+  message: "Product version not pinned."
+  remediation: "Pin tested product version in IaC."
+
+- id: COM-006
+  title: "Pre-upgrade snapshot/backup checks present"
+  product: all
+  severity: warning
+  jmespath: "snapshot"
+  operator: absent
+  message: "No snapshot/backup configuration found."
+  remediation: "Export snapshot before upgrade."
+
+- id: COM-007
+  title: "Bind to localhost vs public address"
+  product: all
+  severity: warning
+  jmespath: "*address"
+  operator: equals
+  expected: "0.0.0.0"
+  message: "Service bound to all interfaces."
+  remediation: "Bind to private interface and set advertise address."
+
+- id: COM-008
+  title: "Ports only open to required CIDR"
+  product: all
+  severity: warning
+  jmespath: "*port"
+  operator: exists
+  message: "Port open; check firewall rules."
+  remediation: "Restrict ports to required CIDR ranges."
+
+# Enhanced Security Rules
+- id: COM-009
+  title: "Root user not used for service execution"
+  product: common
+  severity: critical
+  jmespath: "user"
+  operator: equals
+  expected: "root"
+  message: "Service configured to run as root user."
+  remediation: "Create dedicated service user with minimal privileges."
+  reference: "https://security.stackexchange.com/questions/93994/why-is-it-bad-to-run-a-process-as-root"
+
+- id: COM-010
+  title: "Default admin credentials not used"
+  product: common
+  severity: critical
+  jmespath: "*"
+  operator: regex
+  expected: "(admin|root|password|123456|default|guest):[^\\s]+"
+  message: "Potential default credentials found in configuration."
+  remediation: "Change default credentials to strong, unique values."
+  reference: "https://owasp.org/www-community/attacks/Credential_stuffing"
+
+- id: COM-011
+  title: "TLS cipher suites restricted to secure options"
+  product: common
+  severity: warning
+  jmespath: "tls_cipher_suites"
+  operator: regex
+  expected: "(RC4|DES|3DES|MD5|SHA1)"
+  message: "Insecure TLS cipher suites detected."
+  remediation: "Use only strong cipher suites (AES-GCM, ChaCha20-Poly1305)."
+  reference: "https://ssl-config.mozilla.org/"
+
+- id: COM-012
+  title: "Sensitive files have restricted permissions"
+  product: common
+  severity: warning
+  jmespath: "file_permissions"
+  operator: regex
+  expected: ".*[0-7][0-7][4-7]$"
+  message: "Configuration files may have overly permissive permissions."
+  remediation: "Set file permissions to 600 or 640 for sensitive files."
+  reference: "https://www.cyberciti.biz/tips/understanding-linux-unix-umask-value-usage.html"
+
+- id: COM-013
+  title: "Services not exposed on all interfaces"
+  product: common
+  severity: critical
+  jmespath: "bind_addr|listen_addr|client_addr"
+  operator: equals
+  expected: "0.0.0.0"
+  message: "Service bound to all network interfaces (0.0.0.0)."
+  remediation: "Bind services to specific interfaces or localhost only."
+  reference: "https://cwe.mitre.org/data/definitions/1327.html"
+
+- id: COM-014
+  title: "Resource limits configured for security"
+  product: common
+  severity: warning
+  jmespath: "limits|max_connections|max_requests"
+  operator: absent
+  message: "No resource limits configured."
+  remediation: "Set memory, CPU, connection, and request limits."
+  reference: "https://www.kernel.org/doc/Documentation/cgroups/cgroups.txt"
+
+- id: COM-015
+  title: "Debug mode disabled in production"
+  product: common
+  severity: warning
+  jmespath: "debug|log_level"
+  operator: in
+  expected: ["debug", "trace", "DEBUG", "TRACE"]
+  message: "Debug logging enabled; may expose sensitive information."
+  remediation: "Set log level to INFO or WARN in production."
+  reference: "https://owasp.org/www-community/vulnerabilities/Information_exposure_through_debug_information"
+
+- id: COM-016
+  title: "HTTP Strict Transport Security configured"
+  product: common
+  severity: warning
+  jmespath: "http_headers.strict_transport_security"
+  operator: absent
+  message: "HSTS header not configured for HTTPS endpoints."
+  remediation: "Enable HSTS headers for all HTTPS endpoints."
+  reference: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security"
+
+- id: COM-017
+  title: "Prometheus metrics endpoint secured"
+  product: common
+  severity: warning
+  jmespath: "prometheus_retention_time|telemetry.prometheus_retention_time"
+  operator: gt
+  expected: 86400
+  message: "Prometheus metrics retention time exceeds 24 hours."
+  remediation: "Limit metrics retention and secure metrics endpoints."
+  reference: "https://prometheus.io/docs/prometheus/latest/storage/"
+
+# Operational Excellence Rules
+- id: COM-018
+  title: "Health check endpoints configured"
+  product: common
+  severity: warning
+  jmespath: "health_check|status_endpoint"
+  operator: absent
+  message: "No health check endpoints configured."
+  remediation: "Configure health check endpoints for monitoring."
+  reference: "https://microservices.io/patterns/observability/health-check-api.html"
+
+- id: COM-019
+  title: "Graceful shutdown configured"
+  product: common
+  severity: info
+  jmespath: "shutdown_timeout|graceful_shutdown_timeout"
+  operator: absent
+  message: "No graceful shutdown timeout configured."
+  remediation: "Configure graceful shutdown with appropriate timeout."
+  reference: "https://12factor.net/disposability"
+
+- id: COM-020
+  title: "Circuit breaker pattern implemented"
+  product: common
+  severity: info
+  jmespath: "circuit_breaker|hystrix|resilience4j"
+  operator: absent
+  message: "No circuit breaker configuration found."
+  remediation: "Implement circuit breaker for external dependencies."
+  reference: "https://martinfowler.com/bliki/CircuitBreaker.html"
+
+- id: COM-021
+  title: "Distributed tracing enabled"
+  product: common
+  severity: info
+  jmespath: "tracing|jaeger|zipkin|opentracing"
+  operator: absent
+  message: "No distributed tracing configuration found."
+  remediation: "Enable distributed tracing for observability."
+  reference: "https://opentracing.io/"
+
+- id: COM-022
+  title: "Error rate monitoring configured"
+  product: common
+  severity: warning
+  jmespath: "error_threshold|alert_thresholds"
+  operator: absent
+  message: "No error rate monitoring thresholds configured."
+  remediation: "Configure error rate thresholds and alerting."
+  reference: "https://sre.google/sre-book/monitoring-distributed-systems/"
+
+# Compliance and Governance Rules
+- id: COM-023
+  title: "Data retention policy configured"
+  product: common
+  severity: warning
+  jmespath: "data_retention|retention_policy"
+  operator: absent
+  message: "No data retention policy configured."
+  remediation: "Configure data retention policy per compliance requirements."
+  reference: "https://gdpr.eu/data-retention/"
+
+- id: COM-024
+  title: "Audit trail retention configured"
+  product: common
+  severity: critical
+  jmespath: "audit_retention|log_retention"
+  operator: lt
+  expected: 2190
+  message: "Audit log retention is less than 6 years (SOC2/PCI requirement)."
+  remediation: "Set audit log retention to at least 6 years for compliance."
+  reference: "https://www.pcisecuritystandards.org/pci_security/maintaining_payment_security"
+
+- id: COM-025
+  title: "Encryption at rest enabled"
+  product: common
+  severity: critical
+  jmespath: "encryption.at_rest|encrypt_at_rest"
+  operator: equals
+  expected: false
+  message: "Encryption at rest not enabled."
+  remediation: "Enable encryption at rest for sensitive data."
+  reference: "https://csrc.nist.gov/publications/detail/sp/800-111/final"
+
+- id: COM-026
+  title: "Data classification labels present"
+  product: common
+  severity: info
+  jmespath: "data_classification|sensitivity_label"
+  operator: absent
+  message: "No data classification labels found."
+  remediation: "Add data classification labels (public, internal, confidential, restricted)."
+  reference: "https://www.sans.org/reading-room/whitepapers/privacy/data-classification-guide-1684"
+
+- id: COM-027
+  title: "Change management tracking configured"
+  product: common
+  severity: info
+  jmespath: "change_id|deployment_id|version_tag"
+  operator: absent
+  message: "No change management tracking configured."
+  remediation: "Add change management metadata for traceability."
+  reference: "https://www.itil-officialsite.com/itil-change-management"
+
+# Integration and Compatibility Rules
+- id: COM-028
+  title: "Service discovery integration configured"
+  product: common
+  severity: info
+  jmespath: "service_discovery|consul_discovery|dns_discovery"
+  operator: absent
+  message: "No service discovery integration configured."
+  remediation: "Configure service discovery for dynamic environments."
+  reference: "https://microservices.io/patterns/service-registry.html"
+
+- id: COM-029
+  title: "Load balancer health checks configured"
+  product: common
+  severity: warning
+  jmespath: "health_check_path|health_endpoint"
+  operator: absent
+  message: "No load balancer health check endpoint configured."
+  remediation: "Configure health check endpoints for load balancers."
+  reference: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html"
+
+- id: COM-030
+  title: "Version compatibility matrix validated"
+  product: common
+  severity: info
+  jmespath: "compatible_versions|version_matrix"
+  operator: absent
+  message: "No version compatibility information found."
+  remediation: "Document and validate version compatibility matrix."
+  reference: "https://semver.org/"
+
+- id: COM-031
+  title: "Multi-region deployment considerations"
+  product: common
+  severity: info
+  jmespath: "region|availability_zone|datacenter"
+  operator: absent
+  message: "No multi-region deployment configuration found."
+  remediation: "Configure region and AZ settings for multi-region deployments."
+  reference: "https://aws.amazon.com/architecture/well-architected/"
+
+- id: COM-032
+  title: "Dependency injection configuration secured"
+  product: common
+  severity: warning
+  jmespath: "dependencies|external_services"
+  operator: exists
+  message: "External dependencies configured; verify security."
+  remediation: "Ensure external dependencies are secured and monitored."
+  reference: "https://owasp.org/www-community/vulnerabilities/Insecure_Third_Party_Domain_Access"

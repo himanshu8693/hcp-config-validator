@@ -1,0 +1,385 @@
+- id: CNS-001
+  title: "Gossip encryption key present"
+  product: consul
+  severity: critical
+  jmespath: "encrypt"
+  operator: absent
+  message: "Gossip encryption key not set."
+  remediation: "Enable gossip encryption with a strong key."
+
+- id: CNS-002
+  title: "ACLs enabled"
+  product: consul
+  severity: critical
+  jmespath: "acl.enabled"
+  operator: equals
+  expected: false
+  message: "ACLs are not enabled."
+  remediation: "Enable ACLs and rotate bootstrap token."
+
+- id: CNS-003
+  title: "Consul servers >=3 in cluster for quorum"
+  product: consul
+  severity: warning
+  jmespath: "bootstrap_expect"
+  operator: lt
+  expected: 3
+  message: "Less than 3 Consul servers configured."
+  remediation: "Ensure at least 3 servers for raft quorum."
+
+- id: CNS-004
+  title: "retry_join configured"
+  product: consul
+  severity: warning
+  jmespath: "retry_join"
+  operator: absent
+  message: "retry_join not configured."
+  remediation: "Add retry_join for cluster joining."
+
+- id: CNS-005
+  title: "TLS for RPC/HTTP endpoints enabled"
+  product: consul
+  severity: critical
+  jmespath: "tls"
+  operator: absent
+  message: "TLS not enabled for Consul endpoints."
+  remediation: "Enable TLS/CA for clients and servers."
+
+- id: CNS-006
+  title: "WAN gossip disabled unless multi-dc"
+  product: consul
+  severity: info
+  jmespath: "retry_join_wan"
+  operator: absent
+  message: "retry_join_wan not set."
+  remediation: "Set retry_join_wan only for multi-datacenter."
+
+- id: CNS-007
+  title: "UI access restricted in prod"
+  product: consul
+  severity: warning
+  jmespath: "ui"
+  operator: equals
+  expected: true
+  message: "Consul UI enabled."
+  remediation: "Restrict UI access via firewall or disable in production."
+
+- id: CNS-008
+  title: "Service checks configured for critical services"
+  product: consul
+  severity: warning
+  jmespath: "service.checks"
+  operator: absent
+  message: "No service checks configured."
+  remediation: "Add health checks for critical services."
+
+- id: CNS-009
+  title: "Sidecar/Envoy proxies configured"
+  product: consul
+  severity: info
+  jmespath: "connect.enabled"
+  operator: equals
+  expected: false
+  message: "Connect/sidecar proxies not enabled."
+  remediation: "Enable Connect for service mesh and proxies."
+
+- id: CNS-010
+  title: "advertise_addr set (not default)"
+  product: consul
+  severity: warning
+  jmespath: "advertise_addr"
+  operator: absent
+  message: "advertise_addr not set."
+  remediation: "Set advertise_addr to reachable address."
+
+- id: CNS-011
+  title: "Datacenter name consistency"
+  product: consul
+  severity: info
+  jmespath: "datacenter"
+  operator: absent
+  message: "datacenter not set."
+  remediation: "Set datacenter name and ensure consistency."
+
+- id: CNS-012
+  title: "UI & APIs not exposed publicly"
+  product: consul
+  severity: critical
+  jmespath: "addresses.http"
+  operator: equals
+  expected: "0.0.0.0"
+  message: "Consul HTTP API/UI exposed on all interfaces."
+  remediation: "Bind HTTP API/UI to private interface."
+
+- id: CNS-013
+  title: "Snapshot agent configured for backups"
+  product: consul
+  severity: warning
+  jmespath: "snapshot"
+  operator: absent
+  message: "No snapshot agent configuration found."
+  remediation: "Configure snapshot agent for regular backups."
+
+- id: CNS-014
+  title: "bootstrap_expect not set too low"
+  product: consul
+  severity: warning
+  jmespath: "bootstrap_expect"
+  operator: lt
+  expected: 3
+  message: "bootstrap_expect is less than 3."
+  remediation: "Set bootstrap_expect to expected server count."
+
+- id: CNS-015
+  title: "Node name set"
+  product: consul
+  severity: info
+  jmespath: "node_name"
+  operator: absent
+  message: "node_name not set."
+  remediation: "Set node_name for clarity in logs."
+
+- id: CNS-016
+  title: "ACL token not hardcoded"
+  product: consul
+  severity: critical
+  jmespath: "acl.tokens"
+  operator: exists
+  message: "ACL tokens found in config."
+  remediation: "Do not store tokens in config; use environment variables."
+
+- id: CNS-017
+  title: "TLS min version set to >= tls12"
+  product: consul
+  severity: warning
+  jmespath: "tls_min_version"
+  operator: lt
+  expected: "tls12"
+  message: "TLS min version is less than tls12."
+  remediation: "Set tls_min_version to at least tls12."
+
+- id: CNS-018
+  title: "No secrets embedded in config files"
+  product: consul
+  severity: critical
+  jmespath: "*"
+  operator: regex
+  expected: "(token|password|secret|key)[\\s:=]+[A-Za-z0-9+/=]{8,}"
+  message: "Potential secret found in config file."
+  remediation: "Remove secrets from config; use environment variables or secret manager."
+
+- id: CNS-019
+  title: "Contact/owner metadata present"
+  product: consul
+  severity: info
+  jmespath: "owner"
+  operator: absent
+  message: "No owner/contact metadata found."
+  remediation: "Add owner/contact info for incident response."
+
+- id: CNS-020
+  title: "Telemetry enabled"
+  product: consul
+  severity: info
+  jmespath: "telemetry"
+  operator: absent
+  message: "Telemetry not enabled."
+  remediation: "Enable telemetry stanza for metrics."
+
+- id: CNS-021
+  title: "Mesh gateway configured for service mesh"
+  product: consul
+  severity: info
+  jmespath: "mesh_gateway"
+  operator: absent
+  message: "Mesh gateway not configured."
+  remediation: "Configure mesh gateway for service mesh deployments."
+
+- id: CNS-022
+  title: "Service mesh version compatibility"
+  product: consul
+  severity: info
+  jmespath: "connect.enabled"
+  operator: equals
+  expected: true
+  message: "Check Consul and Envoy version compatibility."
+  remediation: "Ensure Consul and Envoy versions are compatible."
+
+- id: CNS-023
+  title: "ACL bootstrap token rotation scheduled"
+  product: consul
+  severity: warning
+  jmespath: "acl.tokens.bootstrap"
+  operator: exists
+  message: "ACL bootstrap token found in config."
+  remediation: "Rotate ACL bootstrap token regularly."
+
+- id: CNS-024
+  title: "Snapshot agent cadence configured"
+  product: consul
+  severity: info
+  jmespath: "snapshot.schedule"
+  operator: absent
+  message: "Snapshot agent schedule not set."
+  remediation: "Set snapshot agent schedule for regular backups."
+
+- id: CNS-025
+  title: "Gossip encryption key rotation policy"
+  product: consul
+  severity: info
+  jmespath: "encrypt"
+  operator: exists
+  message: "Gossip encryption key present; check rotation policy."
+  remediation: "Rotate gossip encryption key regularly."
+
+- id: CNS-026
+  title: "Service default checks not overly permissive"
+  product: consul
+  severity: warning
+  jmespath: "service.checks[*].interval"
+  operator: lt
+  expected: 60
+  message: "Service check interval is too long."
+  remediation: "Set service check interval to 60s or less."
+
+- id: CNS-027
+  title: "Consul agent telemetry endpoint protected"
+  product: consul
+  severity: warning
+  jmespath: "telemetry"
+  operator: exists
+  message: "Telemetry endpoint may be exposed."
+  remediation: "Protect telemetry endpoint with firewall or auth."
+
+- id: CNS-028
+  title: "Consul version pinned in IaC"
+  product: consul
+  severity: info
+  jmespath: "consul_version"
+  operator: absent
+  message: "Consul version not pinned."
+  remediation: "Pin tested Consul version in IaC."
+
+- id: CNS-029
+  title: "Consul UI auth enabled"
+  product: consul
+  severity: warning
+  jmespath: "ui_config.enabled"
+  operator: equals
+  expected: true
+  message: "Consul UI enabled without auth."
+  remediation: "Enable auth for Consul UI in production."
+
+- id: CNS-030
+  title: "Consul agent log rotation configured"
+  product: consul
+  severity: info
+  jmespath: "log_rotate_bytes"
+  operator: absent
+  message: "Log rotation not configured."
+  remediation: "Configure log rotation for Consul agent logs."
+
+# Enhanced Security and Operational Rules
+- id: CNS-031
+  title: "Consul Connect intentions configured"
+  product: consul
+  severity: warning
+  jmespath: "connect.intentions"
+  operator: absent
+  message: "No Connect intentions configured for service-to-service communication."
+  remediation: "Configure explicit intentions for service mesh security."
+  reference: "https://www.consul.io/docs/connect/intentions"
+
+- id: CNS-032
+  title: "mTLS verification enabled for Connect"
+  product: consul
+  severity: critical
+  jmespath: "connect.ca_provider"
+  operator: absent
+  message: "No CA provider configured for Connect mTLS."
+  remediation: "Configure CA provider for service mesh mTLS."
+  reference: "https://www.consul.io/docs/connect/ca"
+
+- id: CNS-033
+  title: "Consul API rate limiting configured"
+  product: consul
+  severity: warning
+  jmespath: "limits.rpc_rate|limits.http_max_conns_per_client"
+  operator: absent
+  message: "No API rate limiting configured."
+  remediation: "Configure rate limits to prevent API abuse."
+  reference: "https://www.consul.io/docs/agent/options#limits"
+
+- id: CNS-034
+  title: "Network segments properly isolated"
+  product: consul
+  severity: warning
+  jmespath: "segment"
+  operator: exists
+  message: "Network segments in use; verify isolation."
+  remediation: "Ensure network segments are properly isolated and secured."
+  reference: "https://www.consul.io/docs/enterprise/network-segments"
+
+- id: CNS-035
+  title: "Consul API authentication required"
+  product: consul
+  severity: critical
+  jmespath: "acl.default_policy"
+  operator: equals
+  expected: "allow"
+  message: "Default ACL policy allows all operations."
+  remediation: "Set default ACL policy to 'deny' and use explicit rules."
+  reference: "https://www.consul.io/docs/acl/acl-system"
+
+- id: CNS-036
+  title: "Consul KV store access controlled"
+  product: consul
+  severity: warning
+  jmespath: "acl.policies[*].rules"
+  operator: regex
+  expected: "key_prefix.*policy.*=.*write"
+  message: "Check KV store write permissions in ACL policies."
+  remediation: "Restrict KV write access to necessary services only."
+  reference: "https://www.consul.io/docs/acl/acl-rules#key-value-rules"
+
+- id: CNS-037
+  title: "Consul DNS interface secured"
+  product: consul
+  severity: warning
+  jmespath: "ports.dns"
+  operator: exists
+  message: "DNS interface enabled; ensure it's secured."
+  remediation: "Restrict DNS interface access and consider disabling if unused."
+  reference: "https://www.consul.io/docs/agent/options#ports"
+
+- id: CNS-038
+  title: "Consul service registration requires authentication"
+  product: consul
+  severity: warning
+  jmespath: "acl.enable_token_persistence"
+  operator: equals
+  expected: false
+  message: "ACL token persistence disabled."
+  remediation: "Enable token persistence for consistent service authentication."
+  reference: "https://www.consul.io/docs/acl/acl-system#acl-tokens"
+
+- id: CNS-039
+  title: "Consul cluster auto-join secured"
+  product: consul
+  severity: warning
+  jmespath: "retry_join[*]"
+  operator: regex
+  expected: "provider=aws.*tag_key=consul-server.*tag_value=true"
+  message: "Auto-join using cloud provider tags without encryption."
+  remediation: "Ensure auto-join credentials and tags are secured."
+  reference: "https://www.consul.io/docs/install/cloud-auto-join"
+
+- id: CNS-040
+  title: "Consul enterprise features properly licensed"
+  product: consul
+  severity: info
+  jmespath: "license_path"
+  operator: absent
+  message: "No license path configured for enterprise features."
+  remediation: "Configure license for enterprise features if using."
+  reference: "https://www.consul.io/docs/enterprise"

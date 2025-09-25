@@ -1,0 +1,71 @@
+name: Config Validation
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'validator/**'
+      - '**/*.hcl'
+      - '**/*.json'
+      - '**/*.yaml'
+      - '**/*.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'examples/**'
+      - 'validator/**'
+
+jobs:
+  validate:
+    name: Validate Example Configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+          
+      - name: Validate Vault example configs
+        run: |
+          python -m validator.main vault --file examples/vault.json --output console --fail-level warning
+          
+      - name: Validate Consul example configs  
+        run: |
+          python -m validator.main consul --file examples/consul.json --output console --fail-level warning
+          
+      - name: Validate Nomad example configs
+        run: |
+          python -m validator.main nomad --file examples/nomad.json --output console --fail-level warning
+          
+      - name: Test JSON output format
+        run: |
+          python -m validator.main vault --file examples/vault.json --output json > vault-results.json
+          python -m validator.main consul --file examples/consul.json --output json > consul-results.json  
+          python -m validator.main nomad --file examples/nomad.json --output json > nomad-results.json
+          
+      - name: Upload validation results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: validation-results
+          path: |
+            vault-results.json
+            consul-results.json
+            nomad-results.json
+          retention-days: 7

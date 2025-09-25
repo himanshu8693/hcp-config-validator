@@ -1,0 +1,224 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+          
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v
+          
+      - name: Test CLI functionality
+        run: |
+          # Test vault command
+          echo '{"storage": {"file": {"path": "/vault/data"}}}' > test_vault.json
+          python -m validator.main vault --file test_vault.json --output json
+          
+          # Test consul command
+          echo '{"datacenter": "dc1", "server": true}' > test_consul.json
+          python -m validator.main consul --file test_consul.json --output json
+          
+          # Test nomad command
+          echo '{"datacenter": "dc1", "server": {"enabled": true}}' > test_nomad.json
+          python -m validator.main nomad --file test_nomad.json --output json
+
+  build:
+    name: Build Binary
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: amd64
+            binary_suffix: ""
+          - os: windows-latest
+            platform: windows
+            arch: amd64
+            binary_suffix: ".exe"
+          - os: macos-latest
+            platform: darwin
+            arch: amd64
+            binary_suffix: ""
+          - os: macos-14  # Apple Silicon
+            platform: darwin
+            arch: arm64
+            binary_suffix: ""
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/AppData/Local/pip/Cache
+            ~/Library/Caches/pip
+          key: ${{ runner.os }}-${{ matrix.arch }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-pip-
+            
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pip install -e .
+          
+      - name: Build binary with PyInstaller
+        shell: bash
+        run: |
+          # Create the binary using PyInstaller
+          pyinstaller \
+            --onefile \
+            --name "hcp-config-validator${{ matrix.binary_suffix }}" \
+            --add-data "validator/rules:validator/rules" \
+            --hidden-import "validator.rules_engine" \
+            --hidden-import "validator.reporters" \
+            --hidden-import "validator.main" \
+            --console \
+            --clean \
+            standalone_main.py
+            
+      - name: Test binary
+        shell: bash
+        run: |
+          # Test the built binary
+          echo '{"storage": {"file": {"path": "/vault/data"}}}' > test_vault.json
+          ./dist/hcp-config-validator${{ matrix.binary_suffix }} vault --file test_vault.json --output json | head -10
+          
+      - name: Set binary name
+        shell: bash
+        run: |
+          # Set architecture-specific binary name
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            BINARY_NAME="hcp-config-validator-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.binary_suffix }}"
+          else
+            BINARY_NAME="hcp-config-validator-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.binary_suffix }}"
+          fi
+          echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+          mv "dist/hcp-config-validator${{ matrix.binary_suffix }}" "dist/$BINARY_NAME"
+          
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: dist/${{ env.BINARY_NAME }}
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    permissions:
+      contents: write
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: binaries/
+          
+      - name: Display structure of downloaded files
+        run: ls -la binaries/
+        
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find binaries/ -type f -executable -o -name "*.exe" | while read file; do
+            cp "$file" release-assets/
+          done
+          ls -la release-assets/
+          
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Simple changelog generation - you can enhance this
+          echo "## What's Changed" > CHANGELOG.md
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> CHANGELOG.md || echo "- Initial release" >> CHANGELOG.md
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            # HCP Config Validator ${{ github.ref_name }}
+            
+            Platform-agnostic binaries for HCP configuration validation.
+            
+            ## Downloads
+            - **Linux (x64)**: `hcp-config-validator-linux-amd64`
+            - **Windows (x64)**: `hcp-config-validator-windows-amd64.exe`
+            - **macOS (Intel)**: `hcp-config-validator-darwin-amd64`
+            - **macOS (Apple Silicon)**: `hcp-config-validator-darwin-arm64`
+            
+            ## Usage
+            ```bash
+            # Make executable (Linux/macOS)
+            chmod +x hcp-config-validator-*
+            
+            # Validate Vault configuration
+            ./hcp-config-validator-* vault --file config.json
+            
+            # Validate Consul configuration
+            ./hcp-config-validator-* consul --directory /path/to/configs
+            
+            # Validate Nomad configuration with JSON output
+            ./hcp-config-validator-* nomad --file nomad.hcl --output json
+            ```
+            
+            ${{ steps.changelog.outputs.CHANGELOG }}
+          files: release-assets/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
