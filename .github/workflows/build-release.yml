@@ -7,6 +7,19 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a test release'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+      release_tag:
+        description: 'Release tag (e.g., v1.0.0-test)'
+        required: false
+        default: 'v0.0.0-test'
 
 env:
   PYTHON_VERSION: '3.11'
@@ -181,11 +194,13 @@ jobs:
           path: dist/${{ env.BINARY_NAME }}
           retention-days: 30
 
-  release:
-    name: Create Release
+  test-release:
+    name: Create Test Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     
     permissions:
       contents: write
@@ -206,7 +221,85 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find binaries/ -type f -executable -o -name "*.exe" | while read file; do
+          # Copy all binary files from artifact directories
+          find binaries/ -name "hcp-config-validator*" -type f | while read file; do
+            cp "$file" release-assets/
+          done
+          ls -la release-assets/
+          
+      - name: Set release info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=${{ github.event.inputs.release_tag }}" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Test Release ${{ github.event.inputs.release_tag }}" >> $GITHUB_ENV
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+          else
+            # Auto-generate version based on commit
+            echo "RELEASE_TAG=v0.0.0-dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Development Build $(git rev-parse --short HEAD)" >> $GITHUB_ENV  
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+          fi
+          
+      - name: Create Test Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          body: |
+            # HCP Config Validator ${{ env.RELEASE_TAG }}
+            
+            **⚠️ This is a test/development release - not for production use**
+            
+            Platform-agnostic binaries for HCP configuration validation.
+            
+            ## Downloads
+            - **Linux (x64)**: `hcp-config-validator-linux-amd64`
+            - **Windows (x64)**: `hcp-config-validator-windows-amd64.exe`
+            - **macOS (Intel)**: `hcp-config-validator-darwin-amd64`
+            - **macOS (Apple Silicon)**: `hcp-config-validator-darwin-arm64`
+            
+            ## Usage
+            ```bash
+            # Make executable (Linux/macOS)
+            chmod +x hcp-config-validator-*
+            
+            # Validate Vault configuration
+            ./hcp-config-validator-* vault --file config.json
+            ```
+            
+            Built from commit: ${{ github.sha }}
+          files: release-assets/*
+          draft: false
+          prerelease: ${{ env.IS_PRERELEASE }}
+          generate_release_notes: true
+
+  release:
+    name: Create Official Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'test')
+    
+    permissions:
+      contents: write
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries/
+          
+      - name: Display structure of downloaded files
+        run: ls -la binaries/
+        
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          # Copy all binary files from artifact directories  
+          find binaries/ -name "hcp-config-validator*" -type f | while read file; do
             cp "$file" release-assets/
           done
           ls -la release-assets/
