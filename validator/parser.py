@@ -69,6 +69,7 @@ def inject_vault_defaults(cfg):
         cfg['max_lease_ttl'] = '768h'
     if 'ui' not in cfg:
         cfg['ui'] = False
+    # Do NOT inject api_addr by default; must be user-supplied for validation
     # Add more as needed from docs
     return cfg
 

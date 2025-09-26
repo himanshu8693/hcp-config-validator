@@ -55,13 +55,14 @@
   reference: "https://developer.hashicorp.com/vault/docs/configuration/ha_storage"
 
 - id: VLT-006
-  title: "Unsealed root token present"
+  title: "Hardcoded token present in configuration file"
   product: vault
   severity: critical
-  jmespath: "root_token"
-  operator: exists
-  message: "Root token found in config/vars — do not store root tokens in config files."
-  remediation: "Remove tokens from repository; use secrets in CI or Vault agent."
+  jmespath: "*"
+  operator: regex
+  expected: '(token|root_token|vault_token)[\s:=]+[A-Za-z0-9+/=]{8,}'
+  message: "Hardcoded token found in configuration file — do not store tokens directly in config files."
+  remediation: "Remove all tokens from configuration files. Use environment variables, secret managers, or templating to inject tokens securely."
 
 - id: VLT-007
   title: "disable_mlock should be false in production"
@@ -69,8 +70,8 @@
   severity: warning
   jmespath: "disable_mlock"
   operator: equals
-  expected: true
-  message: "disable_mlock is true; this can reduce security on Linux."
+  expected: false
+  message: "disable_mlock is true; this can reduce security on Linux. Set disable_mlock to false unless running in an environment where mlock is unsupported."
   remediation: "Set disable_mlock to false unless running in an environment where mlock is unsupported."
   reference: "https://developer.hashicorp.com/vault/docs/configuration#disable_mlock"
 
@@ -79,7 +80,7 @@
   product: vault
   severity: warning
   jmespath: "api_addr"
-  operator: absent
+  operator: exists
   message: "api_addr is not set."
   remediation: "Set api_addr to the externally reachable address of Vault."
   reference: "https://developer.hashicorp.com/vault/docs/configuration#api_addr"
@@ -89,19 +90,21 @@
   product: vault
   severity: warning
   jmespath: "listener[*].tcp.address"
-  operator: equals
-  expected: "0.0.0.0"
+  operator: regex
+  expected: '^0\.0\.0\.0(:|$)'
   message: "Listener is bound to all interfaces (0.0.0.0)."
   remediation: "Bind listener to a specific interface in production."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/listener"
 
 - id: VLT-010
   title: "cluster_addr should be set for HA"
   product: vault
   severity: warning
   jmespath: "cluster_addr"
-  operator: absent
+  operator: exists
   message: "cluster_addr is not set."
   remediation: "Set cluster_addr for HA Vault clusters."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration#cluster_addr"
 
 - id: VLT-011
   title: "Seal configuration: auto-unseal recommended"
@@ -109,17 +112,24 @@
   severity: info
   jmespath: "seal"
   operator: absent
-  message: "No seal stanza found; consider auto-unseal for automation."
+  message: "No seal stanza found; by default shamir's secret sharing algorithm is used. Consider auto-unseal for automation."
   remediation: "Configure auto-unseal with a supported KMS provider."
+  reference: "https://developer.hashicorp.com/vault/docs/configuration/seal/seal-best-practices"
 
 - id: VLT-012
-  title: "Replication configured for DR/HA"
+  title: "Replication configuration reminder (DR/HA)"
   product: vault
-  severity: warning
-  jmespath: "replication"
+  severity: info
+  jmespath: "replication_reminder"
   operator: absent
-  message: "Replication not configured."
-  remediation: "Configure performance/DR replication for production."
+  message: "Reminder: Replication (DR/HA) is configured at runtime via CLI or API, not in the config file."
+  remediation: "After Vault is running, configure replication using the CLI or API. See Vault documentation for details."
+  reference: |
+    https://developer.hashicorp.com/vault/docs/configuration/replication
+    https://developer.hashicorp.com/vault/docs/enterprise/replication
+    https://developer.hashicorp.com/vault/api-docs/system/replication
+    https://developer.hashicorp.com/vault/api-docs/system/replication/replication-performance
+    https://developer.hashicorp.com/vault/api-docs/system/replication/replication-dr
 
 - id: VLT-013
   title: "Token TTL policies enforced"

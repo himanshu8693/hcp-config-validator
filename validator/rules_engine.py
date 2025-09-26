@@ -73,9 +73,10 @@ def _eval_single(operator, observed, expected, rule=None):
             return int(v.replace("tls", ""))
         return v if v is not None else 0
     if operator == "exists":
-        return observed is not None
+        return observed is not None and observed != "" and not (isinstance(observed, str) and observed.strip() == "")
     elif operator == "absent":
-        return observed is None
+        # Consider absent if None, empty string, or only whitespace
+        return observed is None or (isinstance(observed, str) and observed.strip() == "")
     elif operator == "equals":
         # For tls_min_version, compare as version
         if rule and rule.get("jmespath", "").endswith("tls_min_version"):
